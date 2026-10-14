@@ -1,0 +1,161 @@
+INDEX GENERATION PROJECT
+Design Explanation
+
+1. Project Objective
+
+The objective of this project is to scan a text file, identify words, and
+generate an index containing every word in lexicographic order along with
+the line numbers where the word occurs.
+
+Three different data structures are implemented and compared:
+
+1. Python Dictionary
+2. Binary Search Tree (BST)
+3. Trie
+
+
+2. Overall Design
+
+The input file is read line by line. Each line is scanned character by
+character and words are separated using spaces, line breaks, full stops,
+commas, colons, and semicolons.
+
+Whenever a complete word is found, the word and its line number are added
+to the selected index.
+
+The same indexing process is used for all three implementations.
+
+
+3. Linked List for Line Numbers
+
+A linked list is used to store the line numbers associated with each word.
+
+Each node of the linked list contains:
+
+- line number
+- pointer to the next node
+
+A head pointer stores the first node and a tail pointer stores the last
+node. The tail allows a new line number to be added efficiently at the end.
+
+Repeated occurrences of the same word on the same line are not stored
+multiple times.
+
+
+4. Dictionary Implementation
+
+The Python dictionary uses the word as its key.
+
+The structure is:
+
+    word -> LineList
+
+When a word is encountered for the first time, a new LineList is created.
+For later occurrences, the line number is added to the existing LineList.
+
+For printing, the dictionary keys are sorted before writing the index so
+that the words appear in lexicographic order.
+
+
+5. Binary Search Tree Implementation
+
+The BST stores one word in each node.
+
+Each node contains:
+
+- word
+- linked list of line numbers
+- left child
+- right child
+
+Words smaller than the current node are placed in the left subtree.
+Words larger than the current node are placed in the right subtree.
+If the word already exists, its line number is added to its linked list.
+
+An inorder traversal of the BST produces the words in lexicographic order.
+
+
+6. Trie Implementation
+
+The Trie stores words character by character.
+
+Each Trie node contains:
+
+- children
+- linked list of line numbers for a complete word
+
+A word is inserted by following or creating one node for each character.
+
+A line-number list is created only at the node representing the end of a
+complete word.
+
+For printing, the Trie children are processed in ASCII/lexicographic
+order, which produces the words in lexicographic order.
+
+
+7. File Processing
+
+The program reads the input file one line at a time.
+
+The following characters are treated as word separators:
+
+space, newline, full stop, comma, colon, and semicolon.
+
+All other printable ASCII characters are allowed as part of a word.
+
+
+8. Searching
+
+Each implementation provides a search operation.
+
+The search operation returns the line numbers associated with the word.
+If the word does not exist, the search operation returns None.
+
+
+9. Lexicographic Printing
+
+The generated index is written to the specified output file.
+
+For the dictionary, the keys are sorted before printing.
+
+For the BST, inorder traversal is used.
+
+For the Trie, children are processed in sorted character order.
+
+
+10. Performance Testing
+
+Six input files containing more than one million words are used.
+
+The files contain:
+
+- 1,000 distinct words
+- 5,000 distinct words
+- 10,000 distinct words
+- 50,000 distinct words
+- 100,000 distinct words
+- 500,000 distinct words
+
+Three operations are measured:
+
+1. Construction time of the complete index
+2. Search time for 100,000 random words
+3. Printing time of the complete index
+
+The Python time module is used to measure execution time.
+
+The results are stored in benchmark_results.csv.
+
+
+11. Test Cases
+
+The implementations are tested for:
+
+1. Searching for an existing word.
+2. Searching for a word occurring on multiple lines.
+3. Searching for a word that does not exist.
+4. Handling repeated words.
+5. Printing words in lexicographic order.
+
+The same basic search tests are performed for the Dictionary, BST,
+and Trie implementations.

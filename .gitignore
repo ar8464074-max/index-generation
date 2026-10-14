@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+labexam2/
+file*.txt
+bst_output.txt
+dictionary_output.txt
+trie_output.txt
