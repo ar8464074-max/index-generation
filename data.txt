@@ -1,0 +1,468 @@
+
+import sys
+import re
+import time
+
+
+# ==================================================
+# 1. COMMON WORD PROCESSING
+# ==================================================
+
+def get_words(line):
+    # Convert all letters to lowercase so Hello and HELLO
+    # are treated as the same word.
+    # Use punctuation and spaces as word separators.
+    return re.findall(r"\b\w+\b", line.lower())
+
+
+# ==================================================
+# 2. DICTIONARY INDEX
+# ==================================================
+
+class DictionaryIndex:
+
+    def __init__(self):
+        # Create an empty dictionary to store words.
+        # Each word stores its line numbers and frequency.
+        self.data = {}
+
+    def insert(self, word, line_number):
+        # Make indexing case-insensitive.
+        word = word.lower()
+
+        # Create a new entry when the word appears first.
+        if word not in self.data:
+            self.data[word] = {
+                "lines": set(),       # Prevent duplicate line numbers.
+                "frequency": 0        # Count total occurrences.
+            }
+
+        # Store the line number only once.
+        self.data[word]["lines"].add(line_number)
+
+        # Increase frequency for every occurrence.
+        self.data[word]["frequency"] += 1
+
+    def search(self, word):
+        # Return the word's information, or None if missing.
+        return self.data.get(word.lower())
+
+    def distinct_count(self):
+        # Number of unique words in the dictionary.
+        return len(self.data)
+
+    def display(self):
+        # Sort words alphabetically before displaying them.
+        for word in sorted(self.data):
+            info = self.data[word]
+            lines = sorted(info["lines"])
+
+            print(
+                f"{word} -> Lines: {lines}, "
+                f"Frequency: {info['frequency']}"
+            )
+
+
+# ==================================================
+# 3. BINARY SEARCH TREE (BST) INDEX
+# ==================================================
+
+class BSTNode:
+
+    def __init__(self, word):
+        # Store the word in this node.
+        self.word = word
+
+        # Store unique line numbers and total occurrences.
+        self.lines = set()
+        self.frequency = 0
+
+        # Left child contains smaller words.
+        # Right child contains larger words.
+        self.left = None
+        self.right = None
+
+
+class BSTIndex:
+
+    def __init__(self):
+        # Initially, the tree has no nodes.
+        self.root = None
+
+    def insert(self, word, line_number):
+        # Convert the word to lowercase.
+        word = word.lower()
+
+        # Insert the word and update the root if necessary.
+        self.root = self._insert(
+            self.root, word, line_number
+        )
+
+    def _insert(self, node, word, line_number):
+
+        # If the correct position is empty, create a node.
+        if node is None:
+            node = BSTNode(word)
+
+        # If the word is smaller, insert into the left subtree.
+        elif word < node.word:
+            node.left = self._insert(
+                node.left, word, line_number
+            )
+
+        # If the word is larger, insert into the right subtree.
+        elif word > node.word:
+            node.right = self._insert(
+                node.right, word, line_number
+            )
+
+        # If the word matches this node, update its information.
+        if word == node.word:
+            node.lines.add(line_number)
+            node.frequency += 1
+
+        # Return the node to link it back to its parent.
+        return node
+
+    def search(self, word):
+        # Start searching from the root.
+        word = word.lower()
+        node = self.root
+
+        while node is not None:
+
+            # The word has been found.
+            if word == node.word:
+                return node
+
+            # Search left if the target is smaller.
+            if word < node.word:
+                node = node.left
+
+            # Otherwise, search right.
+            else:
+                node = node.right
+
+        # The word does not exist in the tree.
+        return None
+
+    def _inorder(self, node):
+        # In-order traversal visits left, root, then right.
+        # This produces words in alphabetical order.
+        if node is not None:
+            yield from self._inorder(node.left)
+            yield node
+            yield from self._inorder(node.right)
+
+    def display(self):
+        # Display all BST words in sorted order.
+        for node in self._inorder(self.root):
+            print(
+                f"{node.word} -> Lines: "
+                f"{sorted(node.lines)}, "
+                f"Frequency: {node.frequency}"
+            )
+
+    def distinct_count(self):
+        # Count all nodes, which represent distinct words.
+        return self._count_nodes(self.root)
+
+    def _count_nodes(self, node):
+        # An empty subtree contains zero nodes.
+        if node is None:
+            return 0
+
+        # Count this node, its left subtree and right subtree.
+        return (
+            1
+            + self._count_nodes(node.left)
+            + self._count_nodes(node.right)
+        )
+
+
+# ==================================================
+# 4. TRIE INDEX
+# ==================================================
+
+class TrieNode:
+
+    def __init__(self):
+        # Each key represents a character leading to a child.
+        self.children = {}
+
+        # True means a complete word ends at this node.
+        self.is_end = False
+
+        # Store unique line numbers and total occurrences.
+        self.lines = set()
+        self.frequency = 0
+
+
+class TrieIndex:
+
+    def __init__(self):
+        # Every Trie begins with an empty root node.
+        self.root = TrieNode()
+
+    def insert(self, word, line_number):
+        # Make indexing case-insensitive.
+        word = word.lower()
+        node = self.root
+
+        # Follow or create one node for each character.
+        for character in word:
+            if character not in node.children:
+                node.children[character] = TrieNode()
+
+            node = node.children[character]
+
+        # Mark the final node as the end of a complete word.
+        node.is_end = True
+
+        # Update the word's line numbers and frequency.
+        node.lines.add(line_number)
+        node.frequency += 1
+
+    def search(self, word):
+        # Start from the root and follow each character.
+        word = word.lower()
+        node = self.root
+
+        for character in word:
+
+            # If a character is missing, the word is absent.
+            if character not in node.children:
+                return None
+
+            node = node.children[character]
+
+        # A prefix alone is not necessarily a complete word.
+        if node.is_end:
+            return node
+
+        return None
+
+    def prefix_search(self, prefix):
+        # Find the Trie node representing the prefix.
+        prefix = prefix.lower()
+        node = self.root
+
+        for character in prefix:
+            if character not in node.children:
+                return []
+
+            node = node.children[character]
+
+        # Collect every complete word below this prefix.
+        results = []
+        self._collect(node, prefix, results)
+        return results
+
+    def _collect(self, node, word, results):
+        # If this node ends a word, save that word.
+        if node.is_end:
+            results.append((word, node))
+
+        # Visit child characters alphabetically.
+        for character in sorted(node.children):
+            self._collect(
+                node.children[character],
+                word + character,
+                results
+            )
+
+    def display(self):
+        # An empty prefix matches every word in the Trie.
+        for word, node in self.prefix_search(""):
+            print(
+                f"{word} -> Lines: "
+                f"{sorted(node.lines)}, "
+                f"Frequency: {node.frequency}"
+            )
+
+    def distinct_count(self):
+        # Count all complete words in the Trie.
+        return self._count_words(self.root)
+
+    def _count_words(self, node):
+        # Count one if the current node ends a complete word.
+        count = 1 if node.is_end else 0
+
+        # Add complete words found in every child subtree.
+        for child in node.children.values():
+            count += self._count_words(child)
+
+        return count
+
+
+# ==================================================
+# 5. BUILD AN INDEX FROM AN INPUT FILE
+# ==================================================
+
+def build_index(filename, index):
+
+    # Open the file safely and close it automatically.
+    with open(filename, "r", encoding="utf-8") as file:
+
+        # Start line numbers at 1, not 0.
+        for line_number, line in enumerate(file, start=1):
+
+            # Extract words and insert them into the index.
+            for word in get_words(line):
+                index.insert(word, line_number)
+
+
+# ==================================================
+# 6. MAIN PROGRAM
+# ==================================================
+
+def main():
+
+    # Accept the input filename from the command line.
+    # Example: python index_generation_practice.py input.txt
+    if len(sys.argv) >= 2:
+        filename = sys.argv[1]
+    else:
+        # Ask for the filename if it was not supplied.
+        filename = input("Enter input filename: ").strip()
+
+    # Let the user select the data structure.
+    print("\nChoose index:")
+    print("1. Dictionary")
+    print("2. BST")
+    print("3. Trie")
+
+    choice = input("Enter choice: ").strip()
+
+    # Create the selected index.
+    if choice == "1":
+        index = DictionaryIndex()
+        index_name = "Dictionary"
+
+    elif choice == "2":
+        index = BSTIndex()
+        index_name = "BST"
+
+    elif choice == "3":
+        index = TrieIndex()
+        index_name = "Trie"
+
+    else:
+        # Stop if the choice is invalid.
+        print("Invalid choice.")
+        return
+
+    # Build the index and measure construction time.
+    try:
+        start = time.perf_counter()
+
+        build_index(filename, index)
+
+        construction_time = time.perf_counter() - start
+
+    except FileNotFoundError:
+        # Handle a missing input file without crashing.
+        print("Error: Input file not found.")
+        return
+
+    print(f"\n{index_name} index created successfully.")
+    print(
+        f"Construction time: "
+        f"{construction_time:.6f} seconds"
+    )
+
+    # Display the available operations.
+    print("\n1. Display sorted index")
+    print("2. Search for a word")
+    print("3. Count distinct words")
+    print("4. Count BST nodes")
+    print("5. Search Trie by prefix")
+    print("6. Exit")
+
+    # Keep accepting operations until the user exits.
+    while True:
+
+        operation = input("\nChoose operation: ").strip()
+
+        if operation == "1":
+            # Print every indexed word in sorted order.
+            index.display()
+
+        elif operation == "2":
+            # Read and normalize the search word.
+            word = input("Enter word to search: ").strip()
+            word = word.lower()
+
+            # Measure the search operation.
+            start = time.perf_counter()
+            result = index.search(word)
+            search_time = time.perf_counter() - start
+
+            # Handle missing and successfully found words.
+            if result is None:
+                print("Word not found.")
+
+            else:
+                print("Word found:", word)
+
+                # Dictionary results are dictionaries.
+                # BST and Trie results are node objects.
+                if isinstance(result, dict):
+                    lines = result["lines"]
+                    frequency = result["frequency"]
+                else:
+                    lines = result.lines
+                    frequency = result.frequency
+
+                print("Line numbers:", sorted(lines))
+                print("Frequency:", frequency)
+
+            print(
+                f"Search time: {search_time:.6f} seconds"
+            )
+
+        elif operation == "3":
+            # Count distinct words in the selected structure.
+            print("Distinct words:", index.distinct_count())
+
+        elif operation == "4":
+            # This operation is specifically for a BST.
+            if isinstance(index, BSTIndex):
+                print("BST node count:", index.distinct_count())
+            else:
+                print("Choose BST to count BST nodes.")
+
+        elif operation == "5":
+            # Prefix search is available only for a Trie.
+            if isinstance(index, TrieIndex):
+
+                prefix = input("Enter prefix: ").strip()
+                results = index.prefix_search(prefix)
+
+                if not results:
+                    print("No words found with that prefix.")
+
+                else:
+                    for word, node in results:
+                        print(
+                            f"{word} -> Lines: "
+                            f"{sorted(node.lines)}, "
+                            f"Frequency: {node.frequency}"
+                        )
+
+            else:
+                print("Choose Trie for prefix search.")
+
+        elif operation == "6":
+            # End the program.
+            print("Program ended.")
+            break
+
+        else:
+            # Reject invalid menu options.
+            print("Invalid choice. Try again.")
+
+
+# Run main() only when this file is executed directly.
+if __name__ == "__main__":
+    main()
